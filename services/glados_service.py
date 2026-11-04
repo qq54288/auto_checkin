@@ -2,6 +2,7 @@
 import os
 import json
 import hashlib
+from urllib.parse import urlparse
 from typing import List, Dict, Any
 from .base_service import CheckinService
 
@@ -18,7 +19,8 @@ class GLaDOSService(CheckinService):
 
     def __init__(self):
         super().__init__()
-        self.base_url = os.environ.get('GLADOS_BASE_URL', 'https://glados.cloud')
+        self.base_url = (os.environ.get('GLADOS_BASE_URL', '').strip()
+                         or 'https://glados.rocks').rstrip('/')
 
     @property
     def service_name(self) -> str:
@@ -98,7 +100,7 @@ class GLaDOSService(CheckinService):
             'POST', 
             checkin_url, 
             headers=headers, 
-            data=json.dumps({'token': 'glados.cloud'}) # 请求要上传固定参数
+            data=json.dumps({'token': urlparse(account_config['base_url']).hostname})
         )
         
         checkin_data = response.json()

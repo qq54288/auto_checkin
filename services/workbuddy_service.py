@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import requests
 from typing import Any, Dict, List
 
 from .base_service import CheckinService
@@ -105,9 +106,21 @@ class WorkBuddyService(CheckinService):
             "X-Domain": account_config["domain"],
             "Content-Type": "application/json",
         }
-        response = self.make_request(
-            "POST", f"{self.base_url}/{path}", headers=headers, json={}
-        )
+        try:
+            response = self.make_request(
+                "POST", f"{self.base_url}/{path}", headers=headers, json={}
+            )
+        except requests.exceptions.HTTPError as exc:
+            # 重复领取会返回 HTTP 400；只放行此接口明确的已签到业务码。
+            response = exc.response
+            if path == "daily-checkin" and response is not None and response.status_code == 400:
+                try:
+                    payload = response.json()
+                except ValueError:
+                    raise exc
+                if isinstance(payload, dict) and payload.get("code") == 10001:
+                    return payload
+            raise
         try:
             payload = response.json()
         except ValueError as exc:

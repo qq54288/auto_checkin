@@ -28,7 +28,7 @@
 | --------------- | -------- | ----------------------------------------------------------------------------------------------------------- |
 | GH_ACCESS_TOKEN | 是       | 用于开启“每日状态与增量执行”模式的GitHub Token，**强烈建议配置**                                            |
 | GR_COOKIE       | 否       | GLaDOS的登录cookie，支持多账号，每个账号的cookie用两个竖线隔开                                              |
-| GLADOS_BASE_URL | 否       | GLaDOS的网址，默认填https://glados.cloud                                                                    |
+| GLADOS_BASE_URL | 否       | GLaDOS的网址，未设置或为空时默认 https://glados.rocks；应与获取 Cookie 时的网址一致                            |
 | IKUUU_COOKIE    | 否       | iKuuu的登录cookie，支持多账号，每个账号的cookie用两个竖线隔开                                               |
 | WORKBUDDY_ACCOUNTS_JSON | 否 | WorkBuddy 最小登录态 JSON；建议使用本项目工具读取并更新，不要手工拆分 Token。 |
 | ~~EMAIL~~       | ~~否~~   | ~~废除，iKuuu的登录邮~~箱                                                                                   |
@@ -90,11 +90,13 @@
 # GLaDOS Cookie（多个账号用||分隔）
 GR_COOKIE="gld:sess=gld_xxxx; gld:sess.sig=xxx||gld:sess=gld_yyyy; gld:sess.sig=yyy"
 
-# GLaDOS基础URL（可选，默认为https://glados.cloud）
-GLADOS_BASE_URL="https://glados.cloud"
+# GLaDOS基础URL（可选，默认为https://glados.rocks）
+GLADOS_BASE_URL="https://glados.rocks"
 ```
 
 GLADOS的cookie获取办法：`登录glados`→`首页`→`会员签到`→`打开Chrome开发者工具`→`点击签到`→`在Chrom开发者工具中查询cookie`
+
+复制请求中的完整 Cookie（新格式可能同时包含 `gld:accts`、`gld:accts.sig`、`gld:sess` 和 `gld:sess.sig`），不要只复制某一个字段。程序原样发送 Cookie，并使用 `GLADOS_BASE_URL` 的主机名作为签到 token。例如从 `glados.rocks` 获取 Cookie 时，应使用 `https://glados.rocks`。如果 GitHub Secrets 已设置旧的 `GLADOS_BASE_URL`，需同步修改；仍提示“没有权限”时，请在相同网址重新登录并获取完整 Cookie。
 具体获取cookie的操作见下图
 ![get_cookie](https://github.com/user-attachments/assets/68870bee-9542-4485-bfe5-f3de58aa5c0c)
 
