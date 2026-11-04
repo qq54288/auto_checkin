@@ -66,18 +66,10 @@ class GLaDOSService(CheckinService):
         return configs
     
     def _is_already_checked_in(self, result: Dict[str, Any]) -> bool:
-        """
-        判断是否已经签到过
-        GLaDOS的签到重复判断：
-        - code = 1 且 message 包含 "Checkin Repeats"
-        """
+        """判断签到结果是否标记为今日已签到。"""
         if not isinstance(result, dict):
             return False
-            
-        success = result.get('success', False)
-        message = result.get('message', '')
-        
-        return success is False and "Checkin Repeats" in message
+        return bool(result.get('already_checked_in'))
 
     def login(self, account_config: Dict[str, Any]) -> bool:
         """GLaDOS基于cookie，无需登录步骤"""
@@ -105,13 +97,19 @@ class GLaDOSService(CheckinService):
         
         checkin_data = response.json()
         code = checkin_data.get('code', -1)        
-        message = checkin_data.get('message', '未知结果')
-        print(f"      code = {code}{'-成功' if code == 0 else '-失败'}")
+        message = str(checkin_data.get('message') or '未知结果')
+        already_checked_in = code == 1 and (
+            'Checkin Repeats' in message
+            or message.strip() == "Today's observation logged. Return tomorrow for more points."
+        )
+        success = code == 0 or already_checked_in
+        print(f"      code = {code}{'-成功（今日已签到）' if already_checked_in else '-成功' if success else '-失败'}")
         print(f"      message = {message}")
         
         return {
-            'success': (code == 0),
-            'message': message,
+            'success': success,
+            'message': '今日已签到' if already_checked_in else message,
+            'already_checked_in': already_checked_in,
             'checkin_response': checkin_data
         }
 

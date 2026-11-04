@@ -20,6 +20,30 @@ def response(status, payload):
 
 
 class GladosRequestTests(unittest.TestCase):
+    def test_duplicate_messages_succeed_without_retry(self):
+        for message in ["Today's observation logged. Return tomorrow for more points.", 'Checkin Repeats']:
+            with self.subTest(message=message):
+                service = GLaDOSService()
+                config = dict(account_id='fake-account', cookie='fake', base_url='https://glados.rocks')
+                output = io.StringIO()
+                with patch.object(service.session, 'request', return_value=response(200, {'code': 1, 'message': message})) as request, patch.object(service, 'get_usage_info', return_value={}), patch('services.base_service.time.sleep') as sleep, redirect_stdout(output):
+                    result = service.process_single_account(config)
+                self.assertTrue(result.success)
+                self.assertEqual(result.message, '今日已签到')
+                self.assertEqual(result.data['checkin_response']['message'], message)
+                request.assert_called_once()
+                sleep.assert_not_called()
+                self.assertIn('code = 1-成功（今日已签到）', output.getvalue())
+
+    def test_other_business_errors_remain_failures(self):
+        for code, message in [(1, 'Unknown error'), (-2, '没有权限'), (-2, 'Checkin Repeats'), (1, None)]:
+            with self.subTest(code=code, message=message):
+                service = GLaDOSService()
+                with patch.object(service.session, 'request', return_value=response(200, {'code': code, 'message': message})), redirect_stdout(io.StringIO()):
+                    result = service.do_checkin(dict(cookie='fake', base_url='https://glados.rocks'))
+                self.assertFalse(result['success'])
+                self.assertFalse(service._is_already_checked_in(result))
+
     def test_domain_token_and_full_cookie(self):
         cookie = 'gld:accts=fake; gld:accts.sig=a; gld:sess=fake; gld:sess.sig=b'
         for configured, expected in [
